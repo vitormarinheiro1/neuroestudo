@@ -468,7 +468,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="border-t border-border/40 mt-8 pt-8 text-center text-sm text-muted-foreground">
-            <p>2024 StudyFlow. Todos os direitos reservados.</p>
+            <p>2026 StudyFlow. Todos os direitos reservados.</p>
           </div>
         </div>
       </footer>
