@@ -3,11 +3,12 @@ from django.contrib.auth.models import AbstractUser
 
 
 class Usuario(AbstractUser):
+    username = None
     nome_completo = models.CharField(max_length=255)
     email = models.EmailField(unique=True)
 
     USERNAME_FIELD = "email"
-    REQUIRED_FIELDS = ["username", "nome_completo"]
+    REQUIRED_FIELDS = ["nome_completo"]
 
     def __str__(self):
         return self.nome_completo
