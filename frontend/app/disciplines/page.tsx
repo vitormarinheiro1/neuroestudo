@@ -38,7 +38,7 @@ export default function DisciplinesPage() {
   useEffect(() => {
     const currentUser = getCurrentUser()
     if (!currentUser) {
-      router.push("/login")
+      // router.push("/login")
       return
     }
     setUser(currentUser)
@@ -98,7 +98,7 @@ export default function DisciplinesPage() {
   }
 
   if (!user) {
-    return null
+    // return null
   }
 
   return (

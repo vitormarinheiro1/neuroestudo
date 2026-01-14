@@ -20,6 +20,7 @@ export async function login(email: string, password: string) {
   // salva tokens
   Cookies.set("access_token", res.data.access);
   Cookies.set("refresh_token", res.data.refresh);
+  Cookies.set("user", JSON.stringify(res.data.user));
 
   return res.data.user;
 }

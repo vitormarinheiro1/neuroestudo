@@ -50,6 +50,8 @@ class Disciplina(models.Model):
         Usuario, on_delete=models.CASCADE, related_name="disciplinas"
     )
     nome = models.CharField(max_length=255)
+    meta_semanal = models.PositiveIntegerField(default=10)
+    cor = models.CharField(max_length=7, default="#3b82f6")
 
     def __str__(self):
         return self.nome
