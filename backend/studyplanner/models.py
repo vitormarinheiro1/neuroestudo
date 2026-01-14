@@ -1,14 +1,45 @@
 from django.db import models
-from django.contrib.auth.models import AbstractUser
+from django.contrib.auth.models import (
+    AbstractBaseUser,
+    PermissionsMixin,
+    BaseUserManager,
+)
 
 
-class Usuario(AbstractUser):
-    username = None
+class UsuarioManager(BaseUserManager):
+    def create_user(self, email, password=None, **extra_fields):
+        if not email:
+            raise ValueError("Email é obrigatório")
+
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, email, password=None, **extra_fields):
+        extra_fields.setdefault("is_staff", True)
+        extra_fields.setdefault("is_superuser", True)
+
+        if extra_fields.get("is_staff") is not True:
+            raise ValueError("Superuser precisa ter is_staff=True")
+        if extra_fields.get("is_superuser") is not True:
+            raise ValueError("Superuser precisa ter is_superuser=True")
+
+        return self.create_user(email, password, **extra_fields)
+
+
+class Usuario(AbstractBaseUser, PermissionsMixin):
     nome_completo = models.CharField(max_length=255)
     email = models.EmailField(unique=True)
 
+    is_active = models.BooleanField(default=True)
+    is_staff = models.BooleanField(default=False)
+
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = ["nome_completo"]
+
+    objects = UsuarioManager()
 
     def __str__(self):
         return self.nome_completo
@@ -16,9 +47,7 @@ class Usuario(AbstractUser):
 
 class Disciplina(models.Model):
     usuario = models.ForeignKey(
-        Usuario,
-        on_delete=models.CASCADE,
-        related_name="disciplinas"
+        Usuario, on_delete=models.CASCADE, related_name="disciplinas"
     )
     nome = models.CharField(max_length=255)
 
@@ -28,14 +57,10 @@ class Disciplina(models.Model):
 
 class SessaoEstudo(models.Model):
     usuario = models.ForeignKey(
-        Usuario,
-        on_delete=models.CASCADE,
-        related_name="sessoes"
+        Usuario, on_delete=models.CASCADE, related_name="sessoes"
     )
     disciplina = models.ForeignKey(
-        Disciplina,
-        on_delete=models.CASCADE,
-        related_name="sessoes"
+        Disciplina, on_delete=models.CASCADE, related_name="sessoes"
     )
     horas = models.IntegerField()  # ou minutos
     created_at = models.DateTimeField(auto_now_add=True)
@@ -46,14 +71,10 @@ class SessaoEstudo(models.Model):
 
 class Revisao(models.Model):
     usuario = models.ForeignKey(
-        Usuario,
-        on_delete=models.CASCADE,
-        related_name="revisoes"
+        Usuario, on_delete=models.CASCADE, related_name="revisoes"
     )
     disciplina = models.ForeignKey(
-        Disciplina,
-        on_delete=models.CASCADE,
-        related_name="revisoes"
+        Disciplina, on_delete=models.CASCADE, related_name="revisoes"
     )
     topico = models.CharField(max_length=255)
     created_at = models.DateTimeField(auto_now_add=True)
