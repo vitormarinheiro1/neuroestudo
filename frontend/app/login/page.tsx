@@ -1,53 +1,43 @@
-"use client"
+"use client";
 
-import type React from "react"
-
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Brain, AlertCircle } from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import type React from "react";
+import { login } from "@/services/auth.service";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Brain, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function LoginPage() {
-  const router = useRouter()
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [error, setError] = useState("")
-  const [loading, setLoading] = useState(false)
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
-    setLoading(true)
+    e.preventDefault();
+    setError("");
+    setLoading(true);
 
     try {
-      // Get users from localStorage
-      const usersData = localStorage.getItem("studyflow_users")
-      const users = usersData ? JSON.parse(usersData) : []
-
-      // Find user
-      const user = users.find((u: any) => u.email === email && u.password === password)
-
-      if (!user) {
-        setError("Email ou senha incorretos")
-        setLoading(false)
-        return
-      }
-
-      // Store current user
-      localStorage.setItem("studyflow_current_user", JSON.stringify(user))
-
-      // Redirect to dashboard
-      router.push("/dashboard")
-    } catch (err) {
-      setError("Erro ao fazer login. Tente novamente.")
-      setLoading(false)
+      await login(email, password);
+      router.push("/dashboard");
+    } catch {
+      setError("Email ou senha inválidos");
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
@@ -64,7 +54,9 @@ export default function LoginPage() {
         <Card>
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl">Entrar na sua conta</CardTitle>
-            <CardDescription>Digite seu email e senha para acessar</CardDescription>
+            <CardDescription>
+              Digite seu email e senha para acessar
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
@@ -114,5 +106,5 @@ export default function LoginPage() {
         </Card>
       </div>
     </div>
-  )
+  );
 }

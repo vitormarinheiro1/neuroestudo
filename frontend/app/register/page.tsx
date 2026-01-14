@@ -1,79 +1,67 @@
-"use client"
+"use client";
 
-import type React from "react"
-
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Brain, AlertCircle } from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
+import type React from "react";
+import { register } from "@/services/auth.service";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Brain, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 export default function RegisterPage() {
-  const router = useRouter()
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [error, setError] = useState("")
-  const [loading, setLoading] = useState(false)
+  const router = useRouter();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
-    setLoading(true)
+    e.preventDefault();
+    setError("");
+    setLoading(true);
 
-    // Validation
     if (password !== confirmPassword) {
-      setError("As senhas não coincidem")
-      setLoading(false)
-      return
-    }
-
-    if (password.length < 6) {
-      setError("A senha deve ter pelo menos 6 caracteres")
-      setLoading(false)
-      return
+      setError("As senhas não coincidem");
+      setLoading(false);
+      return;
     }
 
     try {
-      // Get existing users
-      const usersData = localStorage.getItem("studyflow_users")
-      const users = usersData ? JSON.parse(usersData) : []
-
-      // Check if email already exists
-      if (users.find((u: any) => u.email === email)) {
-        setError("Este email já está cadastrado")
-        setLoading(false)
-        return
-      }
-
-      // Create new user
-      const newUser = {
-        id: Date.now().toString(),
-        name,
+      await register({
+        nome_completo: name,
         email,
         password,
-        createdAt: new Date().toISOString(),
+      });
+
+      router.push("/login"); // ou dashboard se backend retornar token
+    } catch (err: any) {
+      const data = err?.response?.data;
+
+      if (data?.email) {
+        setError(data.email[0]);
+      } else if (data?.password) {
+        setError(data.password[0]);
+      } else if (data?.nome_completo) {
+        setError(data.nome_completo[0]);
+      } else {
+        setError("Erro ao criar conta");
       }
 
-      // Save users
-      users.push(newUser)
-      localStorage.setItem("studyflow_users", JSON.stringify(users))
-
-      // Store current user
-      localStorage.setItem("studyflow_current_user", JSON.stringify(newUser))
-
-      // Redirect to dashboard
-      router.push("/dashboard")
-    } catch (err) {
-      setError("Erro ao criar conta. Tente novamente.")
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
@@ -90,7 +78,9 @@ export default function RegisterPage() {
         <Card>
           <CardHeader className="space-y-1">
             <CardTitle className="text-2xl">Criar sua conta</CardTitle>
-            <CardDescription>Preencha os dados para começar gratuitamente</CardDescription>
+            <CardDescription>
+              Preencha os dados para começar gratuitamente
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleRegister} className="space-y-4">
@@ -164,5 +154,5 @@ export default function RegisterPage() {
         </Card>
       </div>
     </div>
-  )
+  );
 }
