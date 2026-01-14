@@ -1,3 +1,4 @@
+from decimal import Decimal
 from django.db import models
 from django.contrib.auth.models import (
     AbstractBaseUser,
@@ -78,11 +79,18 @@ class Revisao(models.Model):
     usuario = models.ForeignKey(
         Usuario, on_delete=models.CASCADE, related_name="revisoes"
     )
-    disciplina = models.ForeignKey(
-        Disciplina, on_delete=models.CASCADE, related_name="revisoes"
-    )
+    disciplina = models.ForeignKey(Disciplina, on_delete=models.CASCADE)
     topico = models.CharField(max_length=255)
+
+    data_ultima = models.DateTimeField()
+    data_proxima = models.DateTimeField()
+    intervalo = models.IntegerField(default=1)
+    facilidade = models.DecimalField(
+        max_digits=5, decimal_places=2, default=Decimal("2.50")
+    )
+    repeticoes = models.IntegerField(default=0)
+
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.topico
+        return f"{self.topico} ({self.disciplina.nome})"
