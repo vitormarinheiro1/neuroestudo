@@ -64,7 +64,10 @@ class SessaoEstudo(models.Model):
     disciplina = models.ForeignKey(
         Disciplina, on_delete=models.CASCADE, related_name="sessoes"
     )
-    horas = models.IntegerField()  # ou minutos
+    horas = models.DecimalField(max_digits=7, decimal_places=4)
+    notas = models.TextField(blank=True, null=True)
+    data_inicio = models.DateTimeField()
+    data_fim = models.DateTimeField()
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):

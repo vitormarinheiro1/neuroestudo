@@ -32,7 +32,7 @@ export default function LoginPage() {
 
     try {
       await login(email, password);
-      router.push("/dashboard");
+      router.push("/disciplines");
     } catch {
       setError("Email ou senha inválidos");
       setLoading(false);
