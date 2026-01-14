@@ -47,7 +47,7 @@ class LoginSerializer(serializers.Serializer):
         return {
             "access": str(refresh.access_token),
             "refresh": str(refresh),
-            "user": UsuarioSerializer(user).data
+            "user": UsuarioSerializer(user).data,
         }
 
 
@@ -65,16 +65,16 @@ class UsuarioSerializer(serializers.ModelSerializer):
 class DisciplinaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Disciplina
-        fields = "__all__"
+        exclude = ["usuario"]
 
 
 class SessaoEstudoSerializer(serializers.ModelSerializer):
     class Meta:
         model = SessaoEstudo
-        fields = "__all__"
+        exclude = ["usuario"]
 
 
 class RevisaoSerializer(serializers.ModelSerializer):
     class Meta:
         model = Revisao
-        fields = "__all__"
+        exclude = ["usuario"]
