@@ -1,152 +1,167 @@
-"use client"
+"use client";
 
-import type React from "react"
-
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import DashboardLayout from "@/components/dashboard-layout"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { getCurrentUser, isAuthenticated } from "@/lib/auth"
-import { User, Settings, Lock, AlertCircle, CheckCircle2 } from "lucide-react"
-import type { User as UserType } from "@/lib/auth"
+import type React from "react";
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import DashboardLayout from "@/components/dashboard-layout";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  User,
+  Settings,
+  Lock,
+  AlertCircle,
+  CheckCircle2,
+  Loader2,
+} from "lucide-react";
+import Cookies from "js-cookie";
+import { updateProfile, changePassword } from "@/services/users.service";
 
 export default function SettingsPage() {
-  const router = useRouter()
-  const [user, setUser] = useState<UserType | null>(null)
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
-  const [currentPassword, setCurrentPassword] = useState("")
-  const [newPassword, setNewPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
+  const router = useRouter();
+  const [userId, setUserId] = useState<number | null>(null);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
 
+  const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<{
+    type: "success" | "error";
+    text: string;
+  } | null>(null);
+
+  // Carrega os dados iniciais do Cookie (que veio do Login)
   useEffect(() => {
-
-    const currentUser = getCurrentUser()
-    if (currentUser) {
-      setUser(currentUser)
-      setName(currentUser.name)
-      setEmail(currentUser.email)
-    }
-  }, [router])
-
-  const handleUpdateProfile = (e: React.FormEvent) => {
-    e.preventDefault()
-    setMessage(null)
-
-    if (!user) return
-
-    // Get all users
-    const usersData = localStorage.getItem("studyflow_users")
-    const users: UserType[] = usersData ? JSON.parse(usersData) : []
-
-    // Check if email is already taken by another user
-    const emailExists = users.some((u) => u.email === email && u.id !== user.id)
-    if (emailExists) {
-      setMessage({ type: "error", text: "Este email já está em uso." })
-      return
-    }
-
-    // Update user data
-    const updatedUsers = users.map((u) => {
-      if (u.id === user.id) {
-        return { ...u, name, email }
+    const userCookie = Cookies.get("user");
+    if (userCookie) {
+      try {
+        const userData = JSON.parse(decodeURIComponent(userCookie));
+        setUserId(userData.id);
+        setName(userData.nome_completo || "");
+        setEmail(userData.email || "");
+      } catch (e) {
+        console.error("Erro ao carregar dados do usuário");
       }
-      return u
-    })
-
-    // Save to localStorage
-    localStorage.setItem("studyflow_users", JSON.stringify(updatedUsers))
-
-    // Update current user session
-    const updatedUser = { ...user, name, email }
-    localStorage.setItem("studyflow_current_user", JSON.stringify(updatedUser))
-    setUser(updatedUser)
-
-    setMessage({ type: "success", text: "Perfil atualizado com sucesso!" })
-  }
-
-  const handleChangePassword = (e: React.FormEvent) => {
-    e.preventDefault()
-    setMessage(null)
-
-    if (!user) return
-
-    // Validate current password
-    if (currentPassword !== user.password) {
-      setMessage({ type: "error", text: "Senha atual incorreta." })
-      return
     }
+  }, []);
 
-    // Validate new password
-    if (newPassword.length < 6) {
-      setMessage({ type: "error", text: "A nova senha deve ter pelo menos 6 caracteres." })
-      return
+  const handleUpdateProfile = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMessage(null);
+    if (!userId) return;
+
+    setLoading(true);
+    try {
+      // Chama o Django (PATCH /usuarios/{id}/)
+      const updatedUser = await updateProfile(userId, {
+        nome_completo: name,
+        email: email,
+      });
+
+      // Atualiza o Cookie para que o nome mude no Dashboard sem refresh
+      Cookies.set("user", JSON.stringify(updatedUser));
+
+      setMessage({ type: "success", text: "Perfil atualizado com sucesso!" });
+    } catch (error: any) {
+      const errorMsg =
+        error.response?.data?.email?.[0] || "Erro ao atualizar perfil.";
+      setMessage({ type: "error", text: errorMsg });
+    } finally {
+      setLoading(false);
     }
+  };
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMessage(null);
 
     if (newPassword !== confirmPassword) {
-      setMessage({ type: "error", text: "As senhas não coincidem." })
-      return
+      setMessage({ type: "error", text: "As novas senhas não coincidem." });
+      return;
     }
 
-    // Get all users
-    const usersData = localStorage.getItem("studyflow_users")
-    const users: UserType[] = usersData ? JSON.parse(usersData) : []
+    if (newPassword.length < 6) {
+      setMessage({
+        type: "error",
+        text: "A nova senha deve ter pelo menos 6 caracteres.",
+      });
+      return;
+    }
 
-    // Update password
-    const updatedUsers = users.map((u) => {
-      if (u.id === user.id) {
-        return { ...u, password: newPassword }
-      }
-      return u
-    })
+    setLoading(true);
+    try {
+      // Chama o action customizado (@action change-password)
+      await changePassword({
+        old_password: currentPassword,
+        new_password: newPassword,
+      });
 
-    // Save to localStorage
-    localStorage.setItem("studyflow_users", JSON.stringify(updatedUsers))
+      setMessage({ type: "success", text: "Senha alterada com sucesso!" });
 
-    // Update current user session
-    const updatedUser = { ...user, password: newPassword }
-    localStorage.setItem("studyflow_current_user", JSON.stringify(updatedUser))
-    setUser(updatedUser)
-
-    // Clear password fields
-    setCurrentPassword("")
-    setNewPassword("")
-    setConfirmPassword("")
-
-    setMessage({ type: "success", text: "Senha alterada com sucesso!" })
-  }
+      // Limpa os campos de senha
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error: any) {
+      // Pega a mensagem do Django: "Senha atual incorreta"
+      const errorMsg = error.response?.data?.detail || "Erro ao alterar senha.";
+      setMessage({ type: "error", text: errorMsg });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <DashboardLayout>
       <div className="space-y-8">
-        {/* Header */}
         <div>
           <h1 className="text-4xl font-bold tracking-tight">Configurações</h1>
-          <p className="text-muted-foreground text-lg mt-2">Gerencie suas informações pessoais e segurança</p>
+          <p className="text-muted-foreground text-lg mt-2">
+            Gerencie suas informações pessoais e segurança
+          </p>
         </div>
 
-        {/* Success/Error Message */}
         {message && (
-          <Card className={message.type === "success" ? "border-accent" : "border-destructive"}>
+          <Card
+            className={
+              message.type === "success"
+                ? "border-emerald-500 bg-emerald-50/50"
+                : "border-destructive bg-destructive/5"
+            }
+          >
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
                 {message.type === "success" ? (
-                  <CheckCircle2 className="h-5 w-5 text-accent" />
+                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
                 ) : (
                   <AlertCircle className="h-5 w-5 text-destructive" />
                 )}
-                <p className={message.type === "success" ? "text-accent" : "text-destructive"}>{message.text}</p>
+                <p
+                  className={
+                    message.type === "success"
+                      ? "text-emerald-700"
+                      : "text-destructive"
+                  }
+                >
+                  {message.text}
+                </p>
               </div>
             </CardContent>
           </Card>
         )}
 
         <div className="grid gap-8 lg:grid-cols-2">
-          {/* Profile Settings */}
+          {/* Perfil */}
           <Card className="border-2">
             <CardHeader>
               <div className="flex items-center gap-3">
@@ -155,51 +170,46 @@ export default function SettingsPage() {
                 </div>
                 <div>
                   <CardTitle className="text-2xl">Perfil</CardTitle>
-                  <CardDescription>Atualize suas informações pessoais</CardDescription>
+                  <CardDescription>
+                    Atualize suas informações pessoais
+                  </CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent>
               <form onSubmit={handleUpdateProfile} className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="name" className="text-base font-medium">
-                    Nome completo
-                  </Label>
+                  <Label htmlFor="name">Nome completo</Label>
                   <Input
                     id="name"
-                    type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="Seu nome"
                     required
-                    className="h-11"
                   />
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-base font-medium">
-                    Email
-                  </Label>
+                  <Label htmlFor="email">Email</Label>
                   <Input
                     id="email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="seu@email.com"
                     required
-                    className="h-11"
                   />
                 </div>
-
-                <Button type="submit" className="w-full h-11 text-base font-medium">
-                  <Settings className="w-5 h-5 mr-2" />
+                <Button type="submit" className="w-full" disabled={loading}>
+                  {loading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Settings className="w-4 h-4 mr-2" />
+                  )}
                   Salvar alterações
                 </Button>
               </form>
             </CardContent>
           </Card>
 
-          {/* Password Settings */}
+          {/* Segurança */}
           <Card className="border-2">
             <CardHeader>
               <div className="flex items-center gap-3">
@@ -215,52 +225,46 @@ export default function SettingsPage() {
             <CardContent>
               <form onSubmit={handleChangePassword} className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="current-password" className="text-base font-medium">
-                    Senha atual
-                  </Label>
+                  <Label htmlFor="current-password">Senha atual</Label>
                   <Input
                     id="current-password"
                     type="password"
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="••••••••"
                     required
-                    className="h-11"
                   />
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="new-password" className="text-base font-medium">
-                    Nova senha
-                  </Label>
+                  <Label htmlFor="new-password">Nova senha</Label>
                   <Input
                     id="new-password"
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="••••••••"
                     required
-                    className="h-11"
                   />
                 </div>
-
                 <div className="space-y-2">
-                  <Label htmlFor="confirm-password" className="text-base font-medium">
-                    Confirmar nova senha
-                  </Label>
+                  <Label htmlFor="confirm-password">Confirmar nova senha</Label>
                   <Input
                     id="confirm-password"
                     type="password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    placeholder="••••••••"
                     required
-                    className="h-11"
                   />
                 </div>
-
-                <Button type="submit" className="w-full h-11 text-base font-medium">
-                  <Lock className="w-5 h-5 mr-2" />
+                <Button
+                  type="submit"
+                  className="w-full"
+                  variant="destructive"
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Lock className="w-4 h-4 mr-2" />
+                  )}
                   Alterar senha
                 </Button>
               </form>
@@ -269,5 +273,5 @@ export default function SettingsPage() {
         </div>
       </div>
     </DashboardLayout>
-  )
+  );
 }
