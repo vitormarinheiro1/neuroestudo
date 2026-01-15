@@ -62,6 +62,11 @@ class UsuarioSerializer(serializers.ModelSerializer):
         read_only_fields = ["id"]
 
 
+class ChangePasswordSerializer(serializers.Serializer):
+    old_password = serializers.CharField(required=True)
+    new_password = serializers.CharField(required=True)
+
+
 class DisciplinaSerializer(serializers.ModelSerializer):
     class Meta:
         model = Disciplina
