@@ -17,10 +17,17 @@ export async function login(email: string, password: string) {
     password,
   });
 
-  // salva tokens
-  Cookies.set("access_token", res.data.access);
-  Cookies.set("refresh_token", res.data.refresh);
-  Cookies.set("user", JSON.stringify(res.data.user));
+  Cookies.set("access_token", res.data.access, {
+    expires: 1, // 1 dia
+  });
+
+  Cookies.set("refresh_token", res.data.refresh, {
+    expires: 2, // 2 dias
+  });
+
+  Cookies.set("user", JSON.stringify(res.data.user), {
+    expires: 2,
+  });
 
   return res.data.user;
 }
@@ -31,4 +38,10 @@ export async function register(data: {
   password: string;
 }) {
   return api.post("/register/", data);
+}
+
+export async function logout() {
+  Cookies.remove("access_token");
+  Cookies.remove("refresh_token");
+  Cookies.remove("user");
 }

@@ -7,9 +7,9 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Brain, LayoutDashboard, Book, Clock, BarChart3, Calendar, LogOut, Menu, X, Settings } from "lucide-react"
-import { logout } from "@/lib/auth"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
+import { logout } from "@/services/auth.service"
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
