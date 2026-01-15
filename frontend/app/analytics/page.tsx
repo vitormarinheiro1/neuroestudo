@@ -21,7 +21,6 @@ import {
 import DashboardLayout from "@/components/dashboard-layout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-// Importação dos seus Services Reais
 import {
   listStudySessions,
   type StudySession,

@@ -78,7 +78,6 @@ function calculateNextReview(review: Review, quality: number) {
 
 export default function ReviewsPage() {
   const router = useRouter();
-  // const [user, setUser] = useState<any>(null);
   const [disciplines, setDisciplines] = useState<Discipline[]>([]);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [pendingReviews, setPendingReviews] = useState<Review[]>([]);
@@ -87,13 +86,6 @@ export default function ReviewsPage() {
   const [formData, setFormData] = useState({ disciplina: 0, topico: "" });
 
   useEffect(() => {
-    // const currentUser = getCurrentUser();
-    // if (!currentUser) {
-    //   // router.push("/login");
-    //   return;
-    // }
-    // setUser(currentUser);
-
     loadDisciplines();
     loadReviews();
   }, [router]);

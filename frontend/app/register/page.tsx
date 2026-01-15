@@ -45,7 +45,7 @@ export default function RegisterPage() {
         password,
       });
 
-      router.push("/login"); // ou dashboard se backend retornar token
+      router.push("/login");
     } catch (err: any) {
       const data = err?.response?.data;
 

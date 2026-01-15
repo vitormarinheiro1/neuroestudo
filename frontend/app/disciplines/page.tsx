@@ -45,14 +45,12 @@ export default function DisciplinesPage() {
     null
   );
 
-  // Ajustado para bater com os campos do seu Service (português)
   const [formData, setFormData] = useState({
     nome: "",
     cor: COLORS[0],
     meta_semanal: 10,
   });
 
-  // Carregar dados ao montar o componente
   useEffect(() => {
     loadDisciplines();
   }, []);

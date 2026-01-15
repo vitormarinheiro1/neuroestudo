@@ -30,7 +30,6 @@ import { createStudySession } from "@/services/sessions.service"
 
 export default function StudyPage() {
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
   const [disciplines, setDisciplines] = useState<Discipline[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDiscipline, setSelectedDiscipline] = useState<string>("");
