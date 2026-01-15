@@ -24,10 +24,6 @@ export default function SettingsPage() {
   const [message, setMessage] = useState<{ type: "success" | "error"; text: string } | null>(null)
 
   useEffect(() => {
-    if (!isAuthenticated()) {
-      router.push("/login")
-      return
-    }
 
     const currentUser = getCurrentUser()
     if (currentUser) {
@@ -122,10 +118,6 @@ export default function SettingsPage() {
     setConfirmPassword("")
 
     setMessage({ type: "success", text: "Senha alterada com sucesso!" })
-  }
-
-  if (!user) {
-    return null
   }
 
   return (
