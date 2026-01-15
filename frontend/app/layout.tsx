@@ -7,10 +7,9 @@ const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "StudyFlow | Organize seus estudos e estude com foco",
+  title: "NeuroEstudo | Organize seus estudos e estude com foco",
   description:
-    "StudyFlow é uma plataforma para organizar seus estudos, criar rotinas eficientes e manter o foco no que realmente importa.",
-  generator: "studyflow",
+    "NeuroEstudo é uma plataforma para organizar seus estudos, criar rotinas eficientes e manter o foco no que realmente importa.",
   icons: {
     icon: [
       {

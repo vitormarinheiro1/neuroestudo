@@ -47,7 +47,7 @@ export default function LoginPage() {
             <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
               <Brain className="w-6 h-6 text-primary-foreground" />
             </div>
-            <span className="font-bold text-2xl">StudyFlow</span>
+            <span className="font-bold text-2xl">NeuroEstudo</span>
           </Link>
         </div>
 
