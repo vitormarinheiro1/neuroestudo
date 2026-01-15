@@ -33,15 +33,14 @@ export default function SettingsPage() {
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
-
-  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{
     type: "success" | "error";
     text: string;
   } | null>(null);
+  const [loading, setLoading] = useState(false);
 
-  // Carrega os dados iniciais do Cookie (que veio do Login)
   useEffect(() => {
+    // Carrega dados do cookie que salvamos no login
     const userCookie = Cookies.get("user");
     if (userCookie) {
       try {
@@ -50,7 +49,7 @@ export default function SettingsPage() {
         setName(userData.nome_completo || "");
         setEmail(userData.email || "");
       } catch (e) {
-        console.error("Erro ao carregar dados do usuário");
+        console.error("Erro ao ler cookie do usuário");
       }
     }
   }, []);
@@ -62,19 +61,17 @@ export default function SettingsPage() {
 
     setLoading(true);
     try {
-      // Chama o Django (PATCH /usuarios/{id}/)
       const updatedUser = await updateProfile(userId, {
         nome_completo: name,
         email: email,
       });
 
-      // Atualiza o Cookie para que o nome mude no Dashboard sem refresh
+      // Atualiza o cookie com os novos dados para refletir no restante do app
       Cookies.set("user", JSON.stringify(updatedUser));
-
       setMessage({ type: "success", text: "Perfil atualizado com sucesso!" });
     } catch (error: any) {
       const errorMsg =
-        error.response?.data?.email?.[0] || "Erro ao atualizar perfil.";
+        error.response?.data?.detail || "Erro ao atualizar perfil.";
       setMessage({ type: "error", text: errorMsg });
     } finally {
       setLoading(false);
@@ -86,7 +83,7 @@ export default function SettingsPage() {
     setMessage(null);
 
     if (newPassword !== confirmPassword) {
-      setMessage({ type: "error", text: "As novas senhas não coincidem." });
+      setMessage({ type: "error", text: "As senhas não coincidem." });
       return;
     }
 
@@ -100,7 +97,7 @@ export default function SettingsPage() {
 
     setLoading(true);
     try {
-      // Chama o action customizado (@action change-password)
+      // Chama o endpoint change-password do seu UsuarioViewSet
       await changePassword({
         old_password: currentPassword,
         new_password: newPassword,
@@ -113,7 +110,7 @@ export default function SettingsPage() {
       setNewPassword("");
       setConfirmPassword("");
     } catch (error: any) {
-      // Pega a mensagem do Django: "Senha atual incorreta"
+      // Captura a mensagem "Senha atual incorreta" enviada pelo seu Django
       const errorMsg = error.response?.data?.detail || "Erro ao alterar senha.";
       setMessage({ type: "error", text: errorMsg });
     } finally {
@@ -124,6 +121,7 @@ export default function SettingsPage() {
   return (
     <DashboardLayout>
       <div className="space-y-8">
+        {/* Header */}
         <div>
           <h1 className="text-4xl font-bold tracking-tight">Configurações</h1>
           <p className="text-muted-foreground text-lg mt-2">
@@ -131,25 +129,26 @@ export default function SettingsPage() {
           </p>
         </div>
 
+        {/* Success/Error Message */}
         {message && (
           <Card
             className={
               message.type === "success"
-                ? "border-emerald-500 bg-emerald-50/50"
-                : "border-destructive bg-destructive/5"
+                ? "border-accent"
+                : "border-destructive"
             }
           >
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
                 {message.type === "success" ? (
-                  <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+                  <CheckCircle2 className="h-5 w-5 text-accent" />
                 ) : (
                   <AlertCircle className="h-5 w-5 text-destructive" />
                 )}
                 <p
                   className={
                     message.type === "success"
-                      ? "text-emerald-700"
+                      ? "text-accent"
                       : "text-destructive"
                   }
                 >
@@ -161,7 +160,7 @@ export default function SettingsPage() {
         )}
 
         <div className="grid gap-8 lg:grid-cols-2">
-          {/* Perfil */}
+          {/* Profile Settings */}
           <Card className="border-2">
             <CardHeader>
               <div className="flex items-center gap-3">
@@ -179,29 +178,44 @@ export default function SettingsPage() {
             <CardContent>
               <form onSubmit={handleUpdateProfile} className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Nome completo</Label>
+                  <Label htmlFor="name" className="text-base font-medium">
+                    Nome completo
+                  </Label>
                   <Input
                     id="name"
+                    type="text"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
+                    placeholder="Seu nome"
                     required
+                    className="h-11"
                   />
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email" className="text-base font-medium">
+                    Email
+                  </Label>
                   <Input
                     id="email"
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    placeholder="seu@email.com"
                     required
+                    className="h-11"
                   />
                 </div>
-                <Button type="submit" className="w-full" disabled={loading}>
+
+                <Button
+                  type="submit"
+                  className="w-full h-11 text-base font-medium"
+                  disabled={loading}
+                >
                   {loading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                   ) : (
-                    <Settings className="w-4 h-4 mr-2" />
+                    <Settings className="w-5 h-5 mr-2" />
                   )}
                   Salvar alterações
                 </Button>
@@ -209,7 +223,7 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          {/* Segurança */}
+          {/* Password Settings */}
           <Card className="border-2">
             <CardHeader>
               <div className="flex items-center gap-3">
@@ -225,45 +239,68 @@ export default function SettingsPage() {
             <CardContent>
               <form onSubmit={handleChangePassword} className="space-y-6">
                 <div className="space-y-2">
-                  <Label htmlFor="current-password">Senha atual</Label>
+                  <Label
+                    htmlFor="current-password"
+                    className="text-base font-medium"
+                  >
+                    Senha atual
+                  </Label>
                   <Input
                     id="current-password"
                     type="password"
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder="••••••••"
                     required
+                    className="h-11"
                   />
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="new-password">Nova senha</Label>
+                  <Label
+                    htmlFor="new-password"
+                    className="text-base font-medium"
+                  >
+                    Nova senha
+                  </Label>
                   <Input
                     id="new-password"
                     type="password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="••••••••"
                     required
+                    className="h-11"
                   />
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="confirm-password">Confirmar nova senha</Label>
+                  <Label
+                    htmlFor="confirm-password"
+                    className="text-base font-medium"
+                  >
+                    Confirmar nova senha
+                  </Label>
                   <Input
                     id="confirm-password"
                     type="password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="••••••••"
                     required
+                    className="h-11"
                   />
                 </div>
+
                 <Button
                   type="submit"
-                  className="w-full"
-                  variant="destructive"
+                  className="w-full h-11 text-base font-medium"
                   disabled={loading}
                 >
                   {loading ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                   ) : (
-                    <Lock className="w-4 h-4 mr-2" />
+                    <Lock className="w-5 h-5 mr-2" />
                   )}
                   Alterar senha
                 </Button>
