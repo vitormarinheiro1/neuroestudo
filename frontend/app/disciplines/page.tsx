@@ -2,7 +2,6 @@
 
 import type React from "react";
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   Card,
   CardContent,
@@ -15,16 +14,22 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, Trash2, Edit, BookOpen, Loader2 } from "lucide-react";
 import DashboardLayout from "@/components/dashboard-layout";
-
-// Importando o service de disciplinas
 import {
   listDisciplines,
   createDiscipline,
   updateDiscipline,
   deleteDiscipline,
   type Discipline,
-} from "@/services/disciplines.service"; // Ajuste o caminho conforme seu projeto
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+} from "@/services/disciplines.service";
+
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 const COLORS = [
   "#3b82f6",
@@ -69,14 +74,12 @@ export default function DisciplinesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     try {
       if (editingDiscipline) {
         await updateDiscipline(editingDiscipline.id, formData);
       } else {
         await createDiscipline(formData);
       }
-
       await loadDisciplines();
       setIsDialogOpen(false);
       resetForm();
@@ -128,6 +131,7 @@ export default function DisciplinesPage() {
               Gerencie todas as matérias do seu edital
             </p>
           </div>
+
           <Dialog
             open={isDialogOpen}
             onOpenChange={(open) => {
@@ -227,8 +231,31 @@ export default function DisciplinesPage() {
             <Loader2 className="w-10 h-10 animate-spin text-primary" />
           </div>
         ) : disciplines.length === 0 ? (
+          /* UI de Lista Vazia Mantida do Código Anterior */
           <Card className="border-2">
-            {/* ... Conteúdo de lista vazia permanece igual ... */}
+            <CardContent className="flex flex-col items-center justify-center py-16">
+              <div className="text-center space-y-6 max-w-md">
+                <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center mx-auto">
+                  <BookOpen className="w-10 h-10 text-primary" />
+                </div>
+                <div className="space-y-2">
+                  <h3 className="font-bold text-2xl">
+                    Nenhuma disciplina cadastrada
+                  </h3>
+                  <p className="text-muted-foreground text-base">
+                    Comece adicionando as matérias do seu edital para organizar
+                    seus estudos
+                  </p>
+                </div>
+                <Button
+                  onClick={() => setIsDialogOpen(true)}
+                  className="gap-2 h-11 text-base shadow-lg shadow-primary/25"
+                >
+                  <Plus className="w-5 h-5" />
+                  Adicionar Primeira Disciplina
+                </Button>
+              </div>
+            </CardContent>
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
