@@ -73,13 +73,15 @@ export default function LandingPage() {
                 Começar Agora - É Grátis
               </Button>
             </Link>
-            <Button
-              size="lg"
-              variant="outline"
-              className="w-full sm:w-auto text-base px-8 py-6 border-2 bg-transparent"
-            >
-              Ver Demonstração
-            </Button>
+            <Link href="/register">
+              <Button
+                size="lg"
+                variant="outline"
+                className="w-full sm:w-auto text-base px-8 py-6 border-2 bg-transparent"
+              >
+                Ver Demonstração
+              </Button>
+            </Link>
           </div>
           <p className="text-sm text-muted-foreground mt-6">Sem cartão de crédito • Configure em 2 minutos</p>
         </div>
@@ -88,13 +90,13 @@ export default function LandingPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto mt-24">
           <div className="text-center p-6 rounded-2xl bg-card border border-border shadow-sm">
             <div className="text-5xl font-bold bg-gradient-to-r from-primary to-accent text-transparent bg-clip-text mb-3">
-              10k+
+              100+
             </div>
             <div className="text-sm font-medium text-muted-foreground">Estudantes Aprovados</div>
           </div>
           <div className="text-center p-6 rounded-2xl bg-card border border-border shadow-sm">
             <div className="text-5xl font-bold bg-gradient-to-r from-primary to-accent text-transparent bg-clip-text mb-3">
-              500h+
+              50h+
             </div>
             <div className="text-sm font-medium text-muted-foreground">Média de Estudo</div>
           </div>
