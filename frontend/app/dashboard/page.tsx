@@ -1,17 +1,25 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Clock, Book, Target, Play, Calendar, Flame } from "lucide-react"
-import { getCurrentUser } from "@/lib/auth"
-import DashboardLayout from "@/components/dashboard-layout"
-import { getStudySessions, getDisciplines, getReviews } from "@/lib/storage"
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Clock, Book, Target, Play, Calendar, Flame } from "lucide-react";
+import DashboardLayout from "@/components/dashboard-layout";
+import { listStudySessions } from "@/services/sessions.service";
+import { listDisciplines } from "@/services/disciplines.service";
+import { listReviews } from "@/services/reviews.service";
+import Cookies from "js-cookie";
 
 export default function DashboardPage() {
-  const router = useRouter()
-  const [user, setUser] = useState<any>(null)
+  const router = useRouter();
+  const [userName, setUserName] = useState("");
   const [stats, setStats] = useState({
     totalHoursToday: 0,
     totalHoursWeek: 0,
@@ -19,78 +27,104 @@ export default function DashboardPage() {
     totalDisciplines: 0,
     reviewsToday: 0,
     currentStreak: 0,
-  })
+  });
 
   useEffect(() => {
-    const currentUser = getCurrentUser()
-    if (!currentUser) {
-      router.push("/login")
-      return
-    }
-    setUser(currentUser)
+    async function loadDashboardData() {
+      const userCookie = Cookies.get("user");
+      try {
+        // Decodifica o nome do cookie
+        const userData = JSON.parse(decodeURIComponent(userCookie || "{}"));
+        setUserName(userData.nome_completo || "Estudante");
 
-    // Calculate stats
-    const sessions = getStudySessions(currentUser.id)
-    const disciplines = getDisciplines(currentUser.id)
-    const reviews = getReviews(currentUser.id)
+        // Busca dados da API
+        const [sessions, disciplines, reviews] = await Promise.all([
+          listStudySessions(),
+          listDisciplines(),
+          listReviews(),
+        ]);
 
-    const now = new Date()
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
-    const weekAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000)
-    const monthAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000)
+        const now = new Date();
+        const endOfToday = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate(),
+          23,
+          59,
+          59
+        );
+        const todayStart = new Date(
+          now.getFullYear(),
+          now.getMonth(),
+          now.getDate()
+        );
 
-    const totalHoursToday =
-      sessions.filter((s) => new Date(s.startTime) >= today).reduce((sum, s) => sum + (s.duration || 0), 0) / 3600
+        // 1. FILTRO DE REVISÕES (Usando seu campo 'data_proxima')
+        const pendingTodayCount = reviews.filter((r: any) => {
+          const dataProxima = new Date(r.data_proxima);
+          return dataProxima <= endOfToday;
+        }).length;
 
-    const totalHoursWeek =
-      sessions.filter((s) => new Date(s.startTime) >= weekAgo).reduce((sum, s) => sum + (s.duration || 0), 0) / 3600
+        // 2. CÁLCULO DE HORAS
+        const weekAgo = new Date(
+          todayStart.getTime() - 7 * 24 * 60 * 60 * 1000
+        );
+        const monthAgo = new Date(
+          todayStart.getTime() - 30 * 24 * 60 * 60 * 1000
+        );
 
-    const totalHoursMonth =
-      sessions.filter((s) => new Date(s.startTime) >= monthAgo).reduce((sum, s) => sum + (s.duration || 0), 0) / 3600
+        const totalHoursToday = sessions
+          .filter((s) => new Date(s.data_inicio) >= todayStart)
+          .reduce((sum, s) => sum + (Number(s.horas) || 0), 0);
 
-    const reviewsToday = reviews.filter((r) => {
-      const reviewDate = new Date(r.nextReview)
-      return reviewDate <= now && reviewDate >= today
-    }).length
+        const totalHoursWeek = sessions
+          .filter((s) => new Date(s.data_inicio) >= weekAgo)
+          .reduce((sum, s) => sum + (Number(s.horas) || 0), 0);
 
-    // Calculate streak
-    let streak = 0
-    const checkDate = new Date(today)
-    while (true) {
-      const dayStart = new Date(checkDate.getFullYear(), checkDate.getMonth(), checkDate.getDate())
-      const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000)
-      const hasSession = sessions.some((s) => {
-        const sessionDate = new Date(s.startTime)
-        return sessionDate >= dayStart && sessionDate < dayEnd
-      })
-      if (hasSession) {
-        streak++
-        checkDate.setDate(checkDate.getDate() - 1)
-      } else {
-        break
+        const totalHoursMonth = sessions
+          .filter((s) => new Date(s.data_inicio) >= monthAgo)
+          .reduce((sum, s) => sum + (Number(s.horas) || 0), 0);
+
+        // 3. CÁLCULO DE STREAK
+        let streak = 0;
+        const checkDate = new Date(todayStart);
+        const sessionDates = new Set(
+          sessions.map((s) => new Date(s.data_inicio).toDateString())
+        );
+
+        while (sessionDates.has(checkDate.toDateString())) {
+          streak++;
+          checkDate.setDate(checkDate.getDate() - 1);
+        }
+
+        // ATUALIZAÇÃO DO ESTADO
+        setStats({
+          totalHoursToday: Math.round(totalHoursToday * 10) / 10,
+          totalHoursWeek: Math.round(totalHoursWeek * 10) / 10,
+          totalHoursMonth: Math.round(totalHoursMonth * 10) / 10,
+          totalDisciplines: disciplines.length,
+          reviewsToday: pendingTodayCount, // <--- AQUI ESTAVA O ERRO (usando count filtrado)
+          currentStreak: streak,
+        });
+      } catch (error) {
+        console.error("Erro ao carregar dados do banco:", error);
       }
     }
 
-    setStats({
-      totalHoursToday: Math.round(totalHoursToday * 10) / 10,
-      totalHoursWeek: Math.round(totalHoursWeek * 10) / 10,
-      totalHoursMonth: Math.round(totalHoursMonth * 10) / 10,
-      totalDisciplines: disciplines.length,
-      reviewsToday,
-      currentStreak: streak,
-    })
-  }, [router])
-
-  if (!user) {
-    return null
-  }
+    loadDashboardData();
+  }, [router]);
 
   return (
     <DashboardLayout>
       <div className="space-y-8">
         <div className="space-y-2">
-          <h1 className="text-4xl font-bold tracking-tight">Olá, {user.name.split(" ")[0]}!</h1>
-          <p className="text-lg text-muted-foreground">Aqui está seu resumo de hoje</p>
+          {/* Usando o campo 'nome' que costuma vir do Django */}
+          <h1 className="text-4xl font-bold tracking-tight">
+            Olá, {userName}!
+          </h1>
+          <p className="text-lg text-muted-foreground">
+            Aqui está seu resumo de hoje
+          </p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -104,8 +138,12 @@ export default function DashboardPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-primary">{stats.totalHoursToday}h</div>
-              <p className="text-sm text-muted-foreground mt-1">Horas de estudo</p>
+              <div className="text-3xl font-bold text-primary">
+                {stats.totalHoursToday}h
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                Horas de estudo
+              </p>
             </CardContent>
           </Card>
 
@@ -119,8 +157,12 @@ export default function DashboardPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-accent">{stats.totalHoursWeek}h</div>
-              <p className="text-sm text-muted-foreground mt-1">Total semanal</p>
+              <div className="text-3xl font-bold text-accent">
+                {stats.totalHoursWeek}h
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                Total semanal
+              </p>
             </CardContent>
           </Card>
 
@@ -134,7 +176,9 @@ export default function DashboardPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-primary">{stats.totalDisciplines}</div>
+              <div className="text-3xl font-bold text-primary">
+                {stats.totalDisciplines}
+              </div>
               <p className="text-sm text-muted-foreground mt-1">Ativas</p>
             </CardContent>
           </Card>
@@ -149,8 +193,12 @@ export default function DashboardPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-accent">{stats.currentStreak}</div>
-              <p className="text-sm text-muted-foreground mt-1">Dias consecutivos</p>
+              <div className="text-3xl font-bold text-accent">
+                {stats.currentStreak}
+              </div>
+              <p className="text-sm text-muted-foreground mt-1">
+                Dias consecutivos
+              </p>
             </CardContent>
           </Card>
         </div>
@@ -164,7 +212,9 @@ export default function DashboardPage() {
                 </div>
                 Iniciar Sessão de Estudo
               </CardTitle>
-              <CardDescription className="text-base">Comece uma nova sessão com cronômetro inteligente</CardDescription>
+              <CardDescription className="text-base">
+                Comece uma nova sessão com cronômetro inteligente
+              </CardDescription>
             </CardHeader>
             <CardContent>
               <Button
@@ -214,7 +264,9 @@ export default function DashboardPage() {
             <div className="space-y-6">
               <div>
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-base font-semibold">Meta Mensal: 80h</span>
+                  <span className="text-base font-semibold">
+                    Meta Mensal: 80h
+                  </span>
                   <span className="text-base font-bold text-primary">
                     {Math.round((stats.totalHoursMonth / 80) * 100)}%
                   </span>
@@ -222,7 +274,12 @@ export default function DashboardPage() {
                 <div className="w-full h-3 bg-muted rounded-full overflow-hidden">
                   <div
                     className="h-full bg-gradient-to-r from-primary to-accent transition-all duration-500"
-                    style={{ width: `${Math.min((stats.totalHoursMonth / 80) * 100, 100)}%` }}
+                    style={{
+                      width: `${Math.min(
+                        (stats.totalHoursMonth / 80) * 100,
+                        100
+                      )}%`,
+                    }}
                   />
                 </div>
               </div>
@@ -241,5 +298,5 @@ export default function DashboardPage() {
         </Card>
       </div>
     </DashboardLayout>
-  )
+  );
 }

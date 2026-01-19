@@ -7,9 +7,9 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Brain, LayoutDashboard, Book, Clock, BarChart3, Calendar, LogOut, Menu, X, Settings } from "lucide-react"
-import { logout } from "@/lib/auth"
 import { cn } from "@/lib/utils"
 import { useState } from "react"
+import { logout } from "@/services/auth.service"
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -40,7 +40,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg">
               <Brain className="w-6 h-6 text-primary-foreground" />
             </div>
-            <span className="font-bold text-2xl tracking-tight">StudyFlow</span>
+            <span className="font-bold text-2xl tracking-tight">NeuroEstudo</span>
           </div>
 
           {/* Navigation */}
@@ -85,7 +85,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg">
             <Brain className="w-5 h-5 text-primary-foreground" />
           </div>
-          <span className="font-bold text-xl tracking-tight">StudyFlow</span>
+          <span className="font-bold text-xl tracking-tight">NeuroEstudo</span>
         </div>
         <Button variant="ghost" size="icon" className="h-10 w-10" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
           {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}

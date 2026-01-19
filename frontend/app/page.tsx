@@ -13,7 +13,7 @@ export default function LandingPage() {
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center shadow-lg">
               <Brain className="w-6 h-6 text-primary-foreground" />
             </div>
-            <span className="font-bold text-2xl tracking-tight">StudyFlow</span>
+            <span className="font-bold text-2xl tracking-tight">NeuroEstudo</span>
           </div>
           <nav className="hidden md:flex items-center gap-8">
             <a
@@ -204,7 +204,7 @@ export default function LandingPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
               <div>
                 <h2 className="text-3xl md:text-4xl font-bold mb-6">
-                  Por Que Milhares de Concurseiros Escolhem o StudyFlow?
+                  Por Que Milhares de Concurseiros Escolhem o NeuroEstudo?
                 </h2>
                 <div className="space-y-4">
                   <div className="flex gap-3">
@@ -407,7 +407,7 @@ export default function LandingPage() {
                 <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
                   <Brain className="w-5 h-5 text-primary-foreground" />
                 </div>
-                <span className="font-bold text-xl">StudyFlow</span>
+                <span className="font-bold text-xl">NeuroEstudo</span>
               </div>
               <p className="text-sm text-muted-foreground">
                 A plataforma completa para concurseiros que buscam aprovação.
@@ -470,7 +470,7 @@ export default function LandingPage() {
             </div>
           </div>
           <div className="border-t border-border/40 mt-8 pt-8 text-center text-sm text-muted-foreground">
-            <p>2026 StudyFlow. Todos os direitos reservados.</p>
+            <p>2026 NeuroEstudo. Todos os direitos reservados.</p>
           </div>
         </div>
       </footer>

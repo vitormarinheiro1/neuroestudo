@@ -1,362 +1,422 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { BarChart3, Clock, TrendingUp, Calendar, Book } from "lucide-react"
-import { getCurrentUser } from "@/lib/auth"
-import DashboardLayout from "@/components/dashboard-layout"
-import { getStudySessions, getDisciplines, type StudySession, type Discipline } from "@/lib/storage"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  BarChart3,
+  Clock,
+  TrendingUp,
+  Calendar,
+  Book,
+  Brain,
+  History,
+} from "lucide-react";
+import DashboardLayout from "@/components/dashboard-layout";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+import {
+  listStudySessions,
+  type StudySession,
+} from "@/services/sessions.service";
+import {
+  listDisciplines,
+  type Discipline,
+} from "@/services/disciplines.service";
 
 interface DisciplineStats {
-  disciplineId: string
-  name: string
-  color: string
-  totalHours: number
-  sessionCount: number
-  averageSession: number
+  disciplineId: number;
+  name: string;
+  color: string;
+  totalHours: number;
+  sessionCount: number;
+  averageSession: number;
 }
 
 export default function AnalyticsPage() {
-  const router = useRouter()
-  const [user, setUser] = useState<any>(null)
-  const [sessions, setSessions] = useState<StudySession[]>([])
-  const [disciplines, setDisciplines] = useState<Discipline[]>([])
-  const [disciplineStats, setDisciplineStats] = useState<DisciplineStats[]>([])
-  const [weeklyHours, setWeeklyHours] = useState<number[]>([])
+  const [sessions, setSessions] = useState<StudySession[]>([]);
+  const [disciplines, setDisciplines] = useState<Discipline[]>([]);
+  const [disciplineStats, setDisciplineStats] = useState<DisciplineStats[]>([]);
+  const [weeklyHours, setWeeklyHours] = useState<number[]>([]);
+  const [loading, setLoading] = useState(true);
   const [totalStats, setTotalStats] = useState({
     totalHours: 0,
     totalSessions: 0,
     averageDaily: 0,
     longestSession: 0,
-  })
+  });
 
   useEffect(() => {
-    const currentUser = getCurrentUser()
-    if (!currentUser) {
-      router.push("/login")
-      return
+    async function loadData() {
+      try {
+        setLoading(true);
+        const [sessionsData, disciplinesData] = await Promise.all([
+          listStudySessions(),
+          listDisciplines(),
+        ]);
+
+        setSessions(sessionsData);
+        setDisciplines(disciplinesData);
+        calculateStats(sessionsData, disciplinesData);
+      } catch (error) {
+        console.error("Erro ao carregar dados do dashboard:", error);
+      } finally {
+        setLoading(false);
+      }
     }
-    setUser(currentUser)
+    loadData();
+  }, []);
 
-    const sessionsData = getStudySessions(currentUser.id)
-    const disciplinesData = getDisciplines(currentUser.id)
+  const calculateStats = (
+    sessionsData: StudySession[],
+    disciplinesData: Discipline[]
+  ) => {
+    // 1. Cálculos Totais
+    const totalHoursRaw = sessionsData.reduce(
+      (sum, s) => sum + (Number(s.horas) || 0),
+      0
+    );
+    const longestSessionRaw = Math.max(
+      ...sessionsData.map((s) => Number(s.horas) || 0),
+      0
+    );
 
-    setSessions(sessionsData)
-    setDisciplines(disciplinesData)
+    const uniqueDays = new Set(
+      sessionsData.map((s) => new Date(s.data_inicio).toDateString())
+    ).size;
 
-    calculateStats(sessionsData, disciplinesData)
-  }, [router])
-
-  const calculateStats = (sessionsData: StudySession[], disciplinesData: Discipline[]) => {
-    // Total stats
-    const totalSeconds = sessionsData.reduce((sum, s) => sum + (s.duration || 0), 0)
-    const totalHours = totalSeconds / 3600
-    const longestSession = Math.max(...sessionsData.map((s) => s.duration || 0), 0) / 3600
-
-    // Calculate days with sessions
-    const uniqueDays = new Set(sessionsData.map((s) => new Date(s.startTime).toDateString())).size
-    const averageDaily = uniqueDays > 0 ? totalHours / uniqueDays : 0
+    const averageDaily = uniqueDays > 0 ? totalHoursRaw / uniqueDays : 0;
 
     setTotalStats({
-      totalHours: Math.round(totalHours * 10) / 10,
+      totalHours: Math.round(totalHoursRaw * 10) / 10,
       totalSessions: sessionsData.length,
       averageDaily: Math.round(averageDaily * 10) / 10,
-      longestSession: Math.round(longestSession * 10) / 10,
-    })
+      longestSession: Math.round(longestSessionRaw * 10) / 10,
+    });
 
-    // Discipline stats
+    // 2. Stats por Disciplina
     const stats: DisciplineStats[] = disciplinesData.map((discipline) => {
-      const disciplineSessions = sessionsData.filter((s) => s.disciplineId === discipline.id)
-      const totalSeconds = disciplineSessions.reduce((sum, s) => sum + (s.duration || 0), 0)
-      const totalHours = totalSeconds / 3600
-      const averageSession = disciplineSessions.length > 0 ? totalSeconds / disciplineSessions.length / 3600 : 0
+      const disciplineSessions = sessionsData.filter(
+        (s) => s.disciplina === discipline.id
+      );
+      const dHours = disciplineSessions.reduce(
+        (sum, s) => sum + (Number(s.horas) || 0),
+        0
+      );
+      const dAverage =
+        disciplineSessions.length > 0 ? dHours / disciplineSessions.length : 0;
 
       return {
         disciplineId: discipline.id,
-        name: discipline.name,
-        color: discipline.color,
-        totalHours: Math.round(totalHours * 10) / 10,
+        name: discipline.nome,
+        color: discipline.cor,
+        totalHours: Math.round(dHours * 10) / 10,
         sessionCount: disciplineSessions.length,
-        averageSession: Math.round(averageSession * 10) / 10,
-      }
-    })
+        averageSession: Math.round(dAverage * 10) / 10,
+      };
+    });
 
-    setDisciplineStats(stats.sort((a, b) => b.totalHours - a.totalHours))
+    setDisciplineStats(stats.sort((a, b) => b.totalHours - a.totalHours));
 
-    // Weekly hours for last 7 days
-    const today = new Date()
-    const weekData: number[] = []
+    // 3. Gráfico Semanal (Últimos 7 dias)
+    const today = new Date();
+    const weekData: number[] = [];
     for (let i = 6; i >= 0; i--) {
-      const date = new Date(today)
-      date.setDate(date.getDate() - i)
-      const dayStart = new Date(date.getFullYear(), date.getMonth(), date.getDate())
-      const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000)
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      const dayStart = new Date(date.setHours(0, 0, 0, 0));
+      const dayEnd = new Date(date.setHours(23, 59, 59, 999));
 
-      const dayHours =
-        sessionsData
-          .filter((s) => {
-            const sessionDate = new Date(s.startTime)
-            return sessionDate >= dayStart && sessionDate < dayEnd
-          })
-          .reduce((sum, s) => sum + (s.duration || 0), 0) / 3600
+      const dayHours = sessionsData
+        .filter((s) => {
+          const sDate = new Date(s.data_inicio);
+          return sDate >= dayStart && sDate <= dayEnd;
+        })
+        .reduce((sum, s) => sum + (Number(s.horas) || 0), 0);
 
-      weekData.push(Math.round(dayHours * 10) / 10)
+      weekData.push(Math.round(dayHours * 10) / 10);
     }
-    setWeeklyHours(weekData)
-  }
+    setWeeklyHours(weekData);
+  };
 
   const getWeekDays = () => {
-    const days = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"]
-    const result: string[] = []
-    const today = new Date()
-
+    const days = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+    const result: string[] = [];
+    const today = new Date();
     for (let i = 6; i >= 0; i--) {
-      const date = new Date(today)
-      date.setDate(date.getDate() - i)
-      result.push(days[date.getDay()])
+      const date = new Date(today);
+      date.setDate(date.getDate() - i);
+      result.push(days[date.getDay()]);
     }
+    return result;
+  };
 
-    return result
-  }
+  const maxWeeklyHours = Math.max(...weeklyHours, 0.1);
 
-  const maxWeeklyHours = Math.max(...weeklyHours, 1)
-
-  if (!user) {
-    return null
-  }
+  if (loading)
+    return (
+      <DashboardLayout>
+        <div className="flex items-center justify-center h-[60vh]">
+          <div className="text-center animate-pulse">
+            <Clock className="w-12 h-12 text-primary mx-auto mb-4" />
+            <p className="text-lg font-medium">Processando estatísticas...</p>
+          </div>
+        </div>
+      </DashboardLayout>
+    );
 
   return (
     <DashboardLayout>
-      <div className="space-y-8">
+      <div className="space-y-8 pb-10">
         <div className="space-y-2">
-          <h1 className="text-4xl font-bold tracking-tight">Relatórios e Análises</h1>
-          <p className="text-lg text-muted-foreground">Acompanhe seu desempenho e progresso</p>
+          <h1 className="text-4xl font-bold tracking-tight">
+            Relatórios e Análises
+          </h1>
+          <p className="text-lg text-muted-foreground">
+            Desempenho real baseado no seu histórico de estudo
+          </p>
         </div>
 
-        {/* Summary Cards */}
+        {/* Cards de Resumo */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <Card className="border-2 hover:shadow-lg transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between pb-3">
-              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
-                Total de Horas
+          <Card className="border-2 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase">
+                Total Horas
               </CardTitle>
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Clock className="w-5 h-5 text-primary" />
-              </div>
+              <Clock className="w-5 h-5 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-primary">{totalStats.totalHours}h</div>
-              <p className="text-sm text-muted-foreground mt-1">Tempo total de estudo</p>
+              <div className="text-3xl font-bold">{totalStats.totalHours}h</div>
             </CardContent>
           </Card>
 
-          <Card className="border-2 hover:shadow-lg transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between pb-3">
-              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+          <Card className="border-2 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase">
                 Sessões
               </CardTitle>
-              <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                <BarChart3 className="w-5 h-5 text-accent" />
-              </div>
+              <BarChart3 className="w-5 h-5 text-accent" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-accent">{totalStats.totalSessions}</div>
-              <p className="text-sm text-muted-foreground mt-1">Total de sessões</p>
+              <div className="text-3xl font-bold text-accent">
+                {totalStats.totalSessions}
+              </div>
             </CardContent>
           </Card>
 
-          <Card className="border-2 hover:shadow-lg transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between pb-3">
-              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+          <Card className="border-2 shadow-sm">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase">
                 Média Diária
               </CardTitle>
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Calendar className="w-5 h-5 text-primary" />
-              </div>
+              <Calendar className="w-5 h-5 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-primary">{totalStats.averageDaily}h</div>
-              <p className="text-sm text-muted-foreground mt-1">Por dia com estudo</p>
+              <div className="text-3xl font-bold">
+                {totalStats.averageDaily}h
+              </div>
             </CardContent>
           </Card>
 
-          <Card className="border-2 hover:shadow-lg transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between pb-3">
-              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
+          <Card className="border-2 bg-primary/5 border-primary/20">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase">
                 Maior Sessão
               </CardTitle>
-              <div className="w-10 h-10 rounded-xl bg-accent/10 flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-accent" />
-              </div>
+              <TrendingUp className="w-5 h-5 text-primary" />
             </CardHeader>
             <CardContent>
-              <div className="text-3xl font-bold text-accent">{totalStats.longestSession}h</div>
-              <p className="text-sm text-muted-foreground mt-1">Recorde pessoal</p>
+              <div className="text-3xl font-bold text-primary">
+                {totalStats.longestSession}h
+              </div>
             </CardContent>
           </Card>
         </div>
 
         <Tabs defaultValue="week" className="space-y-6">
-          <TabsList className="h-12">
-            <TabsTrigger value="week" className="text-base">
+          <TabsList className="bg-muted p-1 rounded-lg">
+            <TabsTrigger value="week" className="px-6">
               Última Semana
             </TabsTrigger>
-            <TabsTrigger value="disciplines" className="text-base">
+            <TabsTrigger value="disciplines" className="px-6">
               Por Disciplina
             </TabsTrigger>
-            <TabsTrigger value="history" className="text-base">
-              Histórico
+            <TabsTrigger value="history" className="px-6">
+              Histórico Completo
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="week" className="space-y-4">
+          <TabsContent value="week">
             <Card className="border-2">
               <CardHeader>
-                <CardTitle className="text-2xl">Atividade dos Últimos 7 Dias</CardTitle>
-                <CardDescription className="text-base">Horas de estudo por dia</CardDescription>
+                <CardTitle>Horas Estudadas nos Últimos 7 Dias</CardTitle>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-6">
-                  {getWeekDays().map((day, index) => (
-                    <div key={index} className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="font-semibold text-base w-16">{day}</span>
-                        <span className="text-muted-foreground font-medium">{weeklyHours[index]}h</span>
-                      </div>
-                      <div className="w-full h-3 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-gradient-to-r from-primary to-accent transition-all duration-500"
-                          style={{ width: `${(weeklyHours[index] / maxWeeklyHours) * 100}%` }}
-                        />
-                      </div>
+              <CardContent className="space-y-6">
+                {getWeekDays().map((day, index) => (
+                  <div key={index} className="space-y-2">
+                    <div className="flex justify-between text-sm font-medium">
+                      <span>{day}</span>
+                      <span className="text-primary">
+                        {weeklyHours[index]}h
+                      </span>
                     </div>
-                  ))}
-                </div>
+                    <div className="w-full h-4 bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-primary transition-all duration-700 ease-out"
+                        style={{
+                          width: `${
+                            (weeklyHours[index] / maxWeeklyHours) * 100
+                          }%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
               </CardContent>
             </Card>
           </TabsContent>
 
-          <TabsContent value="disciplines" className="space-y-4">
+          <TabsContent
+            value="disciplines"
+            className="grid grid-cols-1 lg:grid-cols-2 gap-6"
+          >
             {disciplineStats.length === 0 ? (
-              <Card className="border-2">
-                <CardContent className="flex flex-col items-center justify-center py-16">
-                  <div className="text-center space-y-6 max-w-md">
-                    <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center mx-auto">
-                      <Book className="w-10 h-10 text-primary" />
-                    </div>
-                    <div className="space-y-2">
-                      <h3 className="font-bold text-2xl">Nenhum dado disponível</h3>
-                      <p className="text-muted-foreground text-base">Comece estudando para ver suas estatísticas</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {disciplineStats.map((stat) => (
-                  <Card key={stat.disciplineId} className="border-2 hover:shadow-lg transition-all">
-                    <CardHeader>
-                      <div className="flex items-center gap-4">
-                        <div className="w-2 h-16 rounded-full" style={{ backgroundColor: stat.color }} />
-                        <div>
-                          <CardTitle className="text-xl mb-1">{stat.name}</CardTitle>
-                          <CardDescription className="text-base">{stat.totalHours}h total</CardDescription>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="space-y-6">
-                      <div className="grid grid-cols-2 gap-6">
-                        <div>
-                          <div className="text-3xl font-bold">{stat.sessionCount}</div>
-                          <p className="text-sm text-muted-foreground mt-1">Sessões</p>
-                        </div>
-                        <div>
-                          <div className="text-3xl font-bold">{stat.averageSession}h</div>
-                          <p className="text-sm text-muted-foreground mt-1">Média/sessão</p>
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex items-center justify-between mb-3">
-                          <span className="text-sm text-muted-foreground font-medium">Proporção do Total</span>
-                          <span className="font-bold text-base">
-                            {Math.round((stat.totalHours / totalStats.totalHours) * 100)}%
-                          </span>
-                        </div>
-                        <div className="w-full h-3 bg-muted rounded-full overflow-hidden">
-                          <div
-                            className="h-full transition-all duration-500"
-                            style={{
-                              backgroundColor: stat.color,
-                              width: `${(stat.totalHours / totalStats.totalHours) * 100}%`,
-                            }}
-                          />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+              <div className="col-span-full py-20 text-center text-muted-foreground border-2 border-dashed rounded-xl">
+                Nenhum dado por disciplina disponível.
               </div>
+            ) : (
+              disciplineStats.map((stat) => (
+                <Card
+                  key={stat.disciplineId}
+                  className="border-2 hover:border-primary/50 transition-colors"
+                >
+                  <CardHeader className="pb-2">
+                    <div className="flex items-center gap-3">
+                      <div
+                        className="w-3 h-3 rounded-full"
+                        style={{ backgroundColor: stat.color }}
+                      />
+                      <CardTitle>{stat.name}</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="flex justify-between items-end">
+                      <div>
+                        <p className="text-3xl font-bold">{stat.totalHours}h</p>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider">
+                          Tempo Total
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-semibold">
+                          {stat.sessionCount}
+                        </p>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider">
+                          Sessões
+                        </p>
+                      </div>
+                    </div>
+                    <div className="pt-2">
+                      <div className="flex justify-between text-xs mb-1 font-medium">
+                        <span>Média por sessão: {stat.averageSession}h</span>
+                        <span>
+                          {Math.round(
+                            (stat.totalHours / totalStats.totalHours) * 100
+                          )}
+                          % do total
+                        </span>
+                      </div>
+                      <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full"
+                          style={{
+                            backgroundColor: stat.color,
+                            width: `${
+                              (stat.totalHours / totalStats.totalHours) * 100
+                            }%`,
+                          }}
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))
             )}
           </TabsContent>
 
-          <TabsContent value="history" className="space-y-4">
+          <TabsContent value="history">
             <Card className="border-2">
-              <CardHeader>
-                <CardTitle className="text-2xl">Histórico de Sessões</CardTitle>
-                <CardDescription className="text-base">
-                  Suas últimas {sessions.length} sessões de estudo
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {sessions.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground text-base">
-                    Nenhuma sessão registrada ainda
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {sessions
-                      .sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
-                      .slice(0, 20)
+              <CardContent className="p-0">
+                <div className="divide-y divide-border">
+                  {sessions.length === 0 ? (
+                    <p className="p-10 text-center text-muted-foreground">
+                      Nenhuma sessão encontrada.
+                    </p>
+                  ) : (
+                    sessions
+                      .sort(
+                        (a, b) =>
+                          new Date(b.data_inicio).getTime() -
+                          new Date(a.data_inicio).getTime()
+                      )
                       .map((session) => {
-                        const discipline = disciplines.find((d) => d.id === session.disciplineId)
-                        const duration = (session.duration || 0) / 3600
-                        const date = new Date(session.startTime)
-
+                        const disc = disciplines.find(
+                          (d) => d.id === session.disciplina
+                        );
                         return (
                           <div
                             key={session.id}
-                            className="flex items-center justify-between py-4 border-b last:border-0"
+                            className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors"
                           >
                             <div className="flex items-center gap-4">
-                              <div className="w-2 h-12 rounded-full" style={{ backgroundColor: discipline?.color }} />
+                              <div
+                                className="w-1.5 h-10 rounded-full"
+                                style={{ backgroundColor: disc?.cor || "#ccc" }}
+                              />
                               <div>
-                                <div className="font-semibold text-base">{discipline?.name || "Disciplina"}</div>
-                                <div className="text-sm text-muted-foreground">
-                                  {date.toLocaleDateString("pt-BR")} às{" "}
-                                  {date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}
+                                <p className="font-bold text-sm md:text-base">
+                                  {disc?.nome || "Sem Nome"}
+                                </p>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <Calendar className="w-3 h-3" />
+                                  {new Date(
+                                    session.data_inicio
+                                  ).toLocaleDateString("pt-BR", {
+                                    day: "2-digit",
+                                    month: "short",
+                                    hour: "2-digit",
+                                    minute: "2-digit",
+                                  })}
                                 </div>
                               </div>
                             </div>
                             <div className="text-right">
-                              <div className="font-bold text-lg">{Math.round(duration * 10) / 10}h</div>
-                              {session.notes && (
-                                <div className="text-xs text-muted-foreground max-w-[200px] truncate">
-                                  {session.notes}
-                                </div>
+                              <span className="text-lg font-black">
+                                {Number(session.horas).toFixed(2)}h
+                              </span>
+                              {session.notas && (
+                                <p className="text-[10px] text-muted-foreground max-w-[150px] truncate">
+                                  {session.notas}
+                                </p>
                               )}
                             </div>
                           </div>
-                        )
-                      })}
-                  </div>
-                )}
+                        );
+                      })
+                  )}
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
         </Tabs>
       </div>
     </DashboardLayout>
-  )
+  );
 }
